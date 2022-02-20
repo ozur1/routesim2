@@ -1,5 +1,6 @@
 import logging
 
+
 class Node:
     def __init__(self, id):
         self.id = id
@@ -42,4 +43,3 @@ class Link:
 
     def __str__(self):
         return "Link: " + str(self.node1) + " " + str(self.node2) + " Latency: " + str(self.latency) + "\n"
-

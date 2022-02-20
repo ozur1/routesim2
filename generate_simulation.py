@@ -3,7 +3,6 @@ import datetime
 import math
 import random
 
-
 MAX_LATENCY = 10
 
 
@@ -91,7 +90,7 @@ def add_link(n, src, removed, links, link_time, file):
     count = 0
     while True:
         while neighbor is None:
-            offset = int(math.floor(math.log(n,2)))
+            offset = int(math.floor(math.log(n, 2)))
             val = random.randint(max(0, src - offset), min(n - 1, src + offset))
             if val not in removed:
                 neighbor = val
@@ -130,14 +129,12 @@ def bfs(links, islands, nodes):
     return islands
 
 
-
-
 def generate_simulation(n, degree, time, filename):
     n *= 1.5
     n = int(n)
     nxt = n + 1
     time *= 2
-    if degree > math.log(n,2)-1:
+    if degree > math.log(n, 2) - 1:
         raise Exception("Degree must be smaller than log(n) where n is the number of nodes.")
 
     links = []
@@ -158,13 +155,14 @@ def generate_simulation(n, degree, time, filename):
                 continue
 
             possible_neighbors = []
-            for j in range(int(math.floor(math.log(n,2)))):
-                offset = 1<<j
+            for j in range(int(math.floor(math.log(n, 2)))):
+                offset = 1 << j
                 offset *= 1.5
                 offset = int(offset)
-                for neighbor in [i+offset, i-offset]:
+                for neighbor in [i + offset, i - offset]:
                     if neighbor >= 0 and neighbor < n and neighbor not in removed:
-                        already_exists = any([(l[0] == i and l[1] == neighbor) or (l[0] == neighbor and l[1] == i) for l in links])
+                        already_exists = any(
+                            [(l[0] == i and l[1] == neighbor) or (l[0] == neighbor and l[1] == i) for l in links])
                         if not already_exists:
                             possible_neighbors.append(neighbor)
             # choose random links
@@ -197,7 +195,7 @@ def generate_simulation(n, degree, time, filename):
 
         # change links
         # file.write("%d DRAW_TOPOLOGY\n" % link_time);
-        for t in range(link_time+1, time):
+        for t in range(link_time + 1, time):
             # link change events are a poisson process.
             # we want the time between events to be roughly 10 * MAX_LATENCY
             if 0 == random.randint(0, 10 * MAX_LATENCY):
@@ -237,7 +235,7 @@ def generate_simulation(n, degree, time, filename):
 
         # print routing results
         for i in set([x for x in range(nxt) if x not in removed]):
-            file.write("%d DRAW_TREE %d\n" % (10*time, i))
+            file.write("%d DRAW_TREE %d\n" % (10 * time, i))
 
 
 if __name__ == "__main__":
