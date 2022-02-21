@@ -7,7 +7,7 @@ class Link_State_Node(Node):
         super().__init__(id)
         self.msg_seq_num = 0
         # node_ids = list of node ids in graph
-        self.node_ids = []
+        self.node_ids = set()
         # edges = list of Link objects, triplet (node1, node2, weight)
         # self.edges = []
         # graph = nxn array where n = length of nodes list
@@ -36,7 +36,42 @@ class Link_State_Node(Node):
     # In response, you may want to update your tables and send further messages to your neighbors.
     def link_has_been_updated(self, neighbor, latency):
         # latency = -1 if delete a link
-        pass
+        outdict = {}
+        outdict["node1"] = self.id
+        outdict["node2"] = neighbor
+        outdict["latency"] = latency
+        outdict["seq_num"] = self.msg_seq_num
+        outdict["src"] = self.id
+        self.msg_seq_num += 1
+        self.send_to_neighbors(json.dumps(outdict))
+        if latency == -1 and neighbor in self.neighbors:
+            self.remove_all(self.id, neighbor)
+            self.neighbors.remove(neighbor)
+        else:
+            self.neighbors.append(neighbor)
+            self.node_ids.add(neighbor)
+            self.add_all(self.id, neighbor, latency)
+        return
+
+    def remove_all(self, node1, node2):
+        if node1 in self.graph and node2 in self.graph[node1]:
+            self.graph[node1].pop(node2)
+        if node2 in self.graph and node1 in self.graph[node2]:
+            self.graph[node2].pop(node1)
+        return
+
+    def add_all(self, node1, node2, latency):
+        if not node1 in self.graph:
+            self.graph[node1] = {node2:latency}
+        else:
+            self.graph[node1][node2] = latency
+        if not node2 in self.graph:
+            self.graph[node2] = {node1:latency}
+        else:
+            self.graph[node2][node1] = latency
+        return
+    
+
 
     # Fill in this function
     # Called when routing message 'm' arrives at a node.
@@ -45,7 +80,20 @@ class Link_State_Node(Node):
     # You may also update your tables.
     def process_incoming_routing_message(self, m):
         # parse through message and if it's a link change then update tables and send out messages
-        pass
+        indict = json.loads(m)
+        if indict["seq_num"] > self.msg_seq_num:
+            self.msg_seq_num = indict["seq_num"] + 1
+            if indict["latency"] == -1:
+                self.remove_all(indict["node1"], indict["node2"])
+            else:
+                self.add_all(indict["node1"], indict["node2"], indict["latency"])
+            for neighbor in self.neighbors:
+                source = indict["src"]
+                indict["src"] = self.id
+                if neighbor != source:
+                    self.send_to_neighbor(neighbor, json.dumps(indict))
+
+
 
     # Return a neighbor, -1 if no path to destination
     # Called when the simulator wants to know what your node
