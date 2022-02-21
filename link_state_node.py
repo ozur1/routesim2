@@ -9,11 +9,22 @@ class Link_State_Node(Node):
         # node_ids = list of node ids in graph
         self.node_ids = []
         # edges = list of Link objects, triplet (node1, node2, weight)
-        self.edges = []
+        # self.edges = []
         # graph = nxn array where n = length of nodes list
-        self.graph = self.fillGraph(self.node_ids, self.edges)
-        self.path_table = {}
+        self.graph = {}
+        # self.graph = self.fillGraph(self.node_ids, self.edges)
+        # self.path_table = {}
         # key: node id, value: (distance_to_node, [list of nodes in path to that node])
+
+    # def fillGraph(self, node_ids, edges):
+    #     graph = [[0 for column in range(len(node_ids))] for row in range(len(node_ids))]
+    #     for edge in edges:
+    #         n1 = edge.node1.id
+    #         n2 = edge.node2.id
+    #         dist = edge.latency
+    #         graph[node_ids.index(n1)][node_ids.index(n2)] = dist
+    #         graph[node_ids.index(n2)][node_ids.index(n1)] = dist
+    #     return graph
 
     # Return a string
     def __str__(self):
@@ -33,6 +44,7 @@ class Link_State_Node(Node):
     # In response, you may send further routing messages using self.send_to_neighbors or self.send_to_neighbor.
     # You may also update your tables.
     def process_incoming_routing_message(self, m):
+        # parse through message and if it's a link change then update tables and send out messages
         pass
 
     # Return a neighbor, -1 if no path to destination
@@ -41,31 +53,34 @@ class Link_State_Node(Node):
     # Consult routing table or whatever other mechanism you have devised and then
     #   return the correct next node for reaching the destination.
     def get_next_hop(self, destination):
-        return -1
+        dist, parent = self.dijkstra(self.graph, self.id)
+        path = self.getPath(parent, destination, [])
+        if len(path) < 2:
+            return -1
+        else:
+            return path[1]
 
-    def fillGraph(self, node_ids, edges):
-        graph = [[0 for column in range(len(node_ids))] for row in range(len(node_ids))]
-        for edge in edges:
-            n1 = edge.node1.id
-            n2 = edge.node2.id
-            dist = edge.latency
-            graph[node_ids.index(n1)][node_ids.index(n2)] = dist
-            graph[node_ids.index(n2)][node_ids.index(n1)] = dist
-        return graph
+    # Dijkstra's algorithm adapted from https://www.geeksforgeeks.org/printing-paths-dijkstras-shortest-path-algorithm/
+    def minDistance(self, dist, queue):
+        minimum = float("Inf")
+        min_node_id = ''
+        for node_id in self.node_ids:
+            if dist[node_id] < minimum and node_id in queue:
+                minimum = dist[node_id]
+                min_node_id = node_id
+        return min_node_id
 
-    # https://www.geeksforgeeks.org/printing-paths-dijkstras-shortest-path-algorithm/
-    def Dijkstra(self, src):
-        # initialize all distances to inf, then set distance from src to src = 0
-        inf = 10e10
-        row = len(self.graph)
-        dist = [inf] * row
-        parent = [-1] * row
+    def dijkstra(self, graph, src):
+        dist = {}
+        parent = {}
+
+        for node_id in self.node_ids:
+            dist[node_id] = float("Inf")
+            parent[node_id] = -1
+
         dist[src] = 0
 
-        # list to keep track of nodes not yet visited
         queue = []
-
-        # populate queue with node ids
         for node_id in self.node_ids:
             queue.append(node_id)
 
@@ -73,31 +88,17 @@ class Link_State_Node(Node):
             u = self.minDistance(dist, queue)
             queue.remove(u)
             for v in self.node_ids:
-                if self.graph[v][u] != 0 and v in queue:
-                    if dist[u] + self.graph[v][u] < dist[v]:
-                        dist[u] = self.graph[v][u] < dist[v]
+                if graph[u][v][1] != 0 and v in queue:
+                    if dist[u] + graph[u][v][1] < dist[v]:
+                        dist[v] = dist[u] + graph[u][v][1]
                         parent[v] = u
 
-        # for node in self.nodes:
-        #     # u = node with minimum distance from source (that's not inf)
-        #     u = self.minDistance(visited)
-        #     visited.append(node.id)
-        #     # check distance from u to every non-visited neighbor node,
-        #     for v in self.nodes:
-        #         if v in u.neighbors and \
-        #                 v not in visited and \
-        #                 self.path_table[v.id][0] > self.path_table[u.id][0] + self.graph[u.id][v.id]:
-        #             self.path_table[v.id][0] = self.path_table[u.id][0] + self.graph[u.id][v.id]
+        return dist, parent
 
-    def minDistance(self, dist, queue):
-        min_dist = 10e10
-        min_node = -1
-        for node_id in self.node_ids:
-            if dist[node_id] < min_dist and node_id in queue:
-                min_dist = self.path_table[node_id][0]
-                min_node = node_id
-        return min_node
-
-    def updatePathList(self, src, dist, parent):
-        if parent[src] == -1:
-            self.path_table[src][0] = dist[src]
+    def getPath(self, parent_dict, node_id, path):
+        if parent_dict[node_id] == -1:
+            path.insert(0, node_id)
+        else:
+            path.insert(0, node_id)
+            self.getPath(parent_dict, parent_dict[node_id], path)
+        return path
