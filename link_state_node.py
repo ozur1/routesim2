@@ -5,7 +5,7 @@ import json
 class Link_State_Node(Node):
     def __init__(self, id):
         super().__init__(id)
-        self.msg_seq_num = 0
+        #self.msg_seq_num = 0
         # node_ids = list of node ids in graph
         self.node_ids = set()
         # edges = list of Link objects, triplet (node1, node2, weight)
@@ -28,7 +28,7 @@ class Link_State_Node(Node):
 
     # Return a string
     def __str__(self):
-        return "Rewrite this function to define your node dump printout"
+        return "Node id num "+ str(self.id) + " has a graph of shape: " + str(self.graph)
 
     # Fill in this function
     # Called to inform you that an outgoing link connected to your node has just changed its properties.
@@ -36,14 +36,7 @@ class Link_State_Node(Node):
     # In response, you may want to update your tables and send further messages to your neighbors.
     def link_has_been_updated(self, neighbor, latency):
         # latency = -1 if delete a link
-        outdict = {}
-        outdict["node1"] = self.id
-        outdict["node2"] = neighbor
-        outdict["latency"] = latency
-        outdict["seq_num"] = self.msg_seq_num
-        outdict["src"] = self.id
-        self.msg_seq_num += 1
-        self.send_to_neighbors(json.dumps(outdict))
+        
         if latency == -1 and neighbor in self.neighbors:
             self.remove_all(self.id, neighbor)
             self.neighbors.remove(neighbor)
@@ -51,24 +44,34 @@ class Link_State_Node(Node):
             self.neighbors.append(neighbor)
             self.node_ids.add(neighbor)
             self.add_all(self.id, neighbor, latency)
+        print(self)
+        outdict = {}
+        outdict["node1"] = self.id
+        outdict["node2"] = neighbor
+        outdict["latency"] = latency
+        outdict["seq_num"] = self.graph[self.id][neighbor][0]
+        outdict["src"] = self.id
+        self.graph[self.id][neighbor][0] += 1
+        print("Sending message " + str(outdict) + " to neighbors " + str(self.neighbors))
+        self.send_to_neighbors(json.dumps(outdict))
         return
 
     def remove_all(self, node1, node2):
         if node1 in self.graph and node2 in self.graph[node1]:
-            self.graph[node1].pop(node2)
+            self.graph[node1][node2][1] = 0
         if node2 in self.graph and node1 in self.graph[node2]:
-            self.graph[node2].pop(node1)
+            self.graph[node2][node1][1] = 0
         return
 
     def add_all(self, node1, node2, latency):
-        if not node1 in self.graph:
-            self.graph[node1] = {node2:latency}
+        if not node1 in self.graph or not node2 in self.graph[node1]:
+            self.graph[node1] = {node2:[0, latency]}
         else:
-            self.graph[node1][node2] = latency
-        if not node2 in self.graph:
-            self.graph[node2] = {node1:latency}
+            self.graph[node1][node2][1] = latency
+        if not node2 in self.graph or not node1 in self.graph[node2]:
+            self.graph[node2] = {node1:[0, latency]}
         else:
-            self.graph[node2][node1] = latency
+            self.graph[node2][node1][1] = latency
         return
     
 
@@ -81,8 +84,13 @@ class Link_State_Node(Node):
     def process_incoming_routing_message(self, m):
         # parse through message and if it's a link change then update tables and send out messages
         indict = json.loads(m)
-        if indict["seq_num"] > self.msg_seq_num:
-            self.msg_seq_num = indict["seq_num"] + 1
+        #print(indict["node1"])
+        if not indict["node1"] in self.graph or not indict["node2"] in self.graph[indict["node1"]]:
+            self.graph[indict["node1"]] = {indict["node2"]:[0, indict["latency"]]}
+        if not indict["node2"] in self.graph or not indict["node1"] in self.graph[indict["node2"]]:
+            self.graph[indict["node2"]] = {indict["node1"]:[0, indict["latency"]]}
+        if indict["seq_num"] > self.graph[indict["node1"]][indict["node2"]][0]:
+            self.graph[indict["node1"]][indict["node2"]][0] = indict["seq_num"] + 1
             if indict["latency"] == -1:
                 self.remove_all(indict["node1"], indict["node2"])
             else:
@@ -92,6 +100,7 @@ class Link_State_Node(Node):
                 indict["src"] = self.id
                 if neighbor != source:
                     self.send_to_neighbor(neighbor, json.dumps(indict))
+        return
 
 
 
@@ -131,9 +140,12 @@ class Link_State_Node(Node):
         queue = []
         for node_id in self.node_ids:
             queue.append(node_id)
-
+        print("Queue is:")
+        print(queue)
         while queue:
             u = self.minDistance(dist, queue)
+            if u == '':
+                break
             queue.remove(u)
             for v in self.node_ids:
                 if graph[u][v][1] != 0 and v in queue:
