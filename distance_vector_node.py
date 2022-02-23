@@ -42,11 +42,11 @@ class Distance_Vector_Node(Node):
             self.neighbor_costs[neighbor] = latency
 
         new_dv, need_to_send = self.Bellman_Ford()
-        self.distance_vector = new_dv
 
-        # if need_to_send == True, send message to neighbors
-
-        pass
+        if need_to_send:
+            self.distance_vector = new_dv
+            self.send_to_neighbors(json.dumps((self.id, new_dv)))
+        return
 
     # Fill in this function
     def process_incoming_routing_message(self, m):
@@ -60,7 +60,18 @@ class Distance_Vector_Node(Node):
         if sender is not in self.neighbor_distance_vectors, add it it,
             call Bellman Ford, send out table if self.distance_vector changed
         """
-        pass
+        id, vector = json.loads(m)
+        if id not in self.neighbor_distance_vectors:
+            return
+        elif vector[1] >= self.neighbor_distance_vectors[id][1]:
+            self.neighbor_distance_vectors[id] = vector
+            new_dv, need_to_send = self.Bellman_Ford()
+
+            if need_to_send:
+                self.distance_vector = new_dv
+                self.send_to_neighbors(json.dumps(self.id, new_dv))
+        return
+
 
     # Return a neighbor, -1 if no path to destination
     def get_next_hop(self, destination):

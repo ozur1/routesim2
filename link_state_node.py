@@ -37,11 +37,7 @@ class Link_State_Node(Node):
     # In response, you may want to update your tables and send further messages to your neighbors.
     def link_has_been_updated(self, neighbor, latency):
         # latency = -1 if delete a link
-<<<<<<< Updated upstream
-
-=======
         self.check_send(neighbor)
->>>>>>> Stashed changes
         if latency == -1 and neighbor in self.neighbors:
             self.remove_all(self.id, neighbor)
             self.neighbors.remove(neighbor)
