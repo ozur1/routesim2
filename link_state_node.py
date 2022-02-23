@@ -37,6 +37,7 @@ class Link_State_Node(Node):
     # In response, you may want to update your tables and send further messages to your neighbors.
     def link_has_been_updated(self, neighbor, latency):
         # latency = -1 if delete a link
+        
         self.check_send(neighbor)
         if latency == -1 and neighbor in self.neighbors:
             self.remove_all(self.id, neighbor)
@@ -48,6 +49,7 @@ class Link_State_Node(Node):
             self.neighbors.append(neighbor)
             self.node_ids.add(neighbor)
             self.add_all(self.id, neighbor, latency)
+        self.zeros(neighbor)
         #print(self)
         outdict = {}
         outdict["node1"] = self.id
@@ -88,16 +90,18 @@ class Link_State_Node(Node):
     def process_incoming_routing_message(self, m):
         # parse through message and if it's a link change then update tables and send out messages
         indict = json.loads(m)
-        if indict["node1"] != self.id:
-            self.node_ids.add(indict["node1"])
-        if indict["node2"] != self.id:
-            self.node_ids.add(indict["node2"])
+        #print(indict)
+        self.node_ids.add(indict["node1"])
+        self.node_ids.add(indict["node2"])
         if not indict["node1"] in self.graph:
-            self.graph[indict["node1"]] = {indict["node2"]:[0, indict["latency"]]}
+            self.zeros(indict["node1"])
+            #print(self.id, indict["node1"], indict["node2"], self.graph)
+            self.graph[indict["node1"]][indict["node2"]][1] = indict["latency"]
         elif not indict["node2"] in self.graph[indict["node1"]]:
             self.graph[indict["node1"]][indict["node2"]] = [0, indict["latency"]]
         if not indict["node2"] in self.graph:
-            self.graph[indict["node2"]] = {indict["node1"]:[0, indict["latency"]]}
+            self.zeros(indict["node2"])
+            self.graph[indict["node2"]][indict["node1"]][1] = indict["latency"]
         elif not indict["node1"] in self.graph[indict["node2"]]:
             self.graph[indict["node2"]][indict["node1"]] = [0, indict["latency"]]
         #print(self.id)
@@ -118,6 +122,19 @@ class Link_State_Node(Node):
                     self.send_to_neighbor(neighbor, json.dumps(indict))
         return
 
+    def zeros(self, node):
+        if self.id not in self.graph[self.id]:
+            self.graph[self.id][self.id] = [0, 0]
+        self.graph[node] = {}
+        for i in self.node_ids:
+            #print(node, i)
+            if i not in self.graph:
+                self.graph[i] = {}
+            if i not in self.graph[node]:
+                self.graph[node][i] = [0, 0]
+            if node not in self.graph[i]:
+                self.graph[i][node] = [0, 0]
+        #print(self.graph)
 
 
     # Return a neighbor, -1 if no path to destination
@@ -149,14 +166,16 @@ class Link_State_Node(Node):
         parent = {}
 
         for node_id in self.node_ids:
-            dist[node_id] = float("Inf")
-            parent[node_id] = -1
+            if node_id != self.id:
+                dist[node_id] = float("Inf")
+                parent[node_id] = -1
 
         dist[src] = 0
 
         queue = []
         for node_id in self.node_ids:
-            queue.append(node_id)
+            if node_id != self.id:
+                queue.append(node_id)
         print("Queue is:")
         print(queue)
 
@@ -167,7 +186,7 @@ class Link_State_Node(Node):
                 break
             queue.remove(u)
             for v in self.node_ids:
-                print(u, v)
+                #print(u, v)
                 if graph[u][v][1] != 0 and v in queue:
                     if dist[u] + graph[u][v][1] < dist[v]:
                         dist[v] = dist[u] + graph[u][v][1]
@@ -176,7 +195,8 @@ class Link_State_Node(Node):
         return dist, parent
 
     def check_send(self, neighbor):
-        if neighbor not in self.node_ids:
+        if neighbor not in self.graph:
+            #print("sending all data from " + str(self) + "to " + str(neighbor))
             for node1 in self.graph:
                 for node2 in self.graph[node1]:
                     #print(node1, node2)
