@@ -5,7 +5,7 @@ import json
 class Link_State_Node(Node):
     def __init__(self, id):
         super().__init__(id)
-        # self.msg_seq_num = 0
+        #self.msg_seq_num = 0
         # node_ids = list of node ids in graph
         self.node_ids = set()
         # edges = list of Link objects, triplet (node1, node2, weight)
@@ -65,14 +65,16 @@ class Link_State_Node(Node):
 
     def add_all(self, node1, node2, latency):
         if not node1 in self.graph or not node2 in self.graph[node1]:
-            self.graph[node1] = {node2: [0, latency]}
+            self.graph[node1] = {node2:[0, latency]}
         else:
             self.graph[node1][node2][1] = latency
         if not node2 in self.graph or not node1 in self.graph[node2]:
-            self.graph[node2] = {node1: [0, latency]}
+            self.graph[node2] = {node1:[0, latency]}
         else:
             self.graph[node2][node1][1] = latency
         return
+
+
 
     # Fill in this function
     # Called when routing message 'm' arrives at a node.
@@ -82,11 +84,11 @@ class Link_State_Node(Node):
     def process_incoming_routing_message(self, m):
         # parse through message and if it's a link change then update tables and send out messages
         indict = json.loads(m)
-        # print(indict["node1"])
+        #print(indict["node1"])
         if not indict["node1"] in self.graph or not indict["node2"] in self.graph[indict["node1"]]:
-            self.graph[indict["node1"]] = {indict["node2"]: [0, indict["latency"]]}
+            self.graph[indict["node1"]] = {indict["node2"]:[0, indict["latency"]]}
         if not indict["node2"] in self.graph or not indict["node1"] in self.graph[indict["node2"]]:
-            self.graph[indict["node2"]] = {indict["node1"]: [0, indict["latency"]]}
+            self.graph[indict["node2"]] = {indict["node1"]:[0, indict["latency"]]}
         if indict["seq_num"] > self.graph[indict["node1"]][indict["node2"]][0]:
             self.graph[indict["node1"]][indict["node2"]][0] = indict["seq_num"] + 1
             if indict["latency"] == -1:
@@ -99,6 +101,8 @@ class Link_State_Node(Node):
                 if neighbor != source:
                     self.send_to_neighbor(neighbor, json.dumps(indict))
         return
+
+
 
     # Return a neighbor, -1 if no path to destination
     # Called when the simulator wants to know what your node
