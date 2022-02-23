@@ -50,9 +50,16 @@ class Distance_Vector_Node(Node):
 
     # Fill in this function
     def process_incoming_routing_message(self, m):
-        # step 1: parse message
-        # message will contain node ID of sender, and that node's distance vector
-
+        """
+        step 1: parse message
+        message will contain node ID of sender, and that node's distance vector
+        step 2: check if sender is in self.neighbor_distance_vectors
+        if it is: check seq number
+        if message dv seq number <= self.neighbor_distance_vectors[sender] seq num, ignore
+        else: update seq number, call Bellman Ford, send out table if self.distance_vector changed
+        if sender is not in self.neighbor_distance_vectors, add it it,
+            call Bellman Ford, send out table if self.distance_vector changed
+        """
         pass
 
     # Return a neighbor, -1 if no path to destination
