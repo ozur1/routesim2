@@ -1,6 +1,7 @@
 from simulator.node import Node
 import json
 
+curgraph = {}
 
 class Link_State_Node(Node):
     def __init__(self, id):
@@ -36,15 +37,22 @@ class Link_State_Node(Node):
     # In response, you may want to update your tables and send further messages to your neighbors.
     def link_has_been_updated(self, neighbor, latency):
         # latency = -1 if delete a link
+<<<<<<< Updated upstream
 
+=======
+        self.check_send(neighbor)
+>>>>>>> Stashed changes
         if latency == -1 and neighbor in self.neighbors:
             self.remove_all(self.id, neighbor)
             self.neighbors.remove(neighbor)
+        elif neighbor in self.neighbors:
+            self.node_ids.add(neighbor)
+            self.add_all(self.id, neighbor, latency)
         else:
             self.neighbors.append(neighbor)
             self.node_ids.add(neighbor)
             self.add_all(self.id, neighbor, latency)
-        print(self)
+        #print(self)
         outdict = {}
         outdict["node1"] = self.id
         outdict["node2"] = neighbor
@@ -52,7 +60,7 @@ class Link_State_Node(Node):
         outdict["seq_num"] = self.graph[self.id][neighbor][0]
         outdict["src"] = self.id
         self.graph[self.id][neighbor][0] += 1
-        print("Sending message " + str(outdict) + " to neighbors " + str(self.neighbors))
+        #print("Sending message " + str(outdict) + " to neighbors " + str(self.neighbors))
         self.send_to_neighbors(json.dumps(outdict))
         return
 
@@ -84,21 +92,33 @@ class Link_State_Node(Node):
     def process_incoming_routing_message(self, m):
         # parse through message and if it's a link change then update tables and send out messages
         indict = json.loads(m)
-        #print(indict["node1"])
-        if not indict["node1"] in self.graph or not indict["node2"] in self.graph[indict["node1"]]:
+        if indict["node1"] != self.id:
+            self.node_ids.add(indict["node1"])
+        if indict["node2"] != self.id:
+            self.node_ids.add(indict["node2"])
+        if not indict["node1"] in self.graph:
             self.graph[indict["node1"]] = {indict["node2"]:[0, indict["latency"]]}
-        if not indict["node2"] in self.graph or not indict["node1"] in self.graph[indict["node2"]]:
+        elif not indict["node2"] in self.graph[indict["node1"]]:
+            self.graph[indict["node1"]][indict["node2"]] = [0, indict["latency"]]
+        if not indict["node2"] in self.graph:
             self.graph[indict["node2"]] = {indict["node1"]:[0, indict["latency"]]}
-        if indict["seq_num"] > self.graph[indict["node1"]][indict["node2"]][0]:
+        elif not indict["node1"] in self.graph[indict["node2"]]:
+            self.graph[indict["node2"]][indict["node1"]] = [0, indict["latency"]]
+        #print(self.id)
+        #print(indict["seq_num"], self.graph[indict["node1"]][indict["node2"]][0])
+        if indict["seq_num"] >= self.graph[indict["node1"]][indict["node2"]][0]:
             self.graph[indict["node1"]][indict["node2"]][0] = indict["seq_num"] + 1
+            #print("Initiating flood")
             if indict["latency"] == -1:
                 self.remove_all(indict["node1"], indict["node2"])
             else:
                 self.add_all(indict["node1"], indict["node2"], indict["latency"])
+            source = indict["src"]
+            indict["src"] = self.id
+            #print(self.neighbors)
             for neighbor in self.neighbors:
-                source = indict["src"]
-                indict["src"] = self.id
                 if neighbor != source:
+                    #print("Sending to id: " + str(neighbor))
                     self.send_to_neighbor(neighbor, json.dumps(indict))
         return
 
@@ -110,6 +130,7 @@ class Link_State_Node(Node):
     # Consult routing table or whatever other mechanism you have devised and then
     #   return the correct next node for reaching the destination.
     def get_next_hop(self, destination):
+        #print(self.id)
         dist, parent = self.dijkstra(self.graph, self.id)
         path = self.getPath(parent, destination, [])
         if len(path) < 2:
@@ -142,18 +163,35 @@ class Link_State_Node(Node):
             queue.append(node_id)
         print("Queue is:")
         print(queue)
+
+        print(self)
         while queue:
             u = self.minDistance(dist, queue)
             if u == '':
                 break
             queue.remove(u)
             for v in self.node_ids:
+                print(u, v)
                 if graph[u][v][1] != 0 and v in queue:
                     if dist[u] + graph[u][v][1] < dist[v]:
                         dist[v] = dist[u] + graph[u][v][1]
                         parent[v] = u
 
         return dist, parent
+
+    def check_send(self, neighbor):
+        if neighbor not in self.node_ids:
+            for node1 in self.graph:
+                for node2 in self.graph[node1]:
+                    #print(node1, node2)
+                    outdict = {}
+                    outdict["node1"] = node1
+                    outdict["node2"] = node2
+                    outdict["latency"] = self.graph[node1][node2][1]
+                    outdict["seq_num"] = self.graph[node1][node2][0]
+                    outdict["src"] = self.id
+                    self.send_to_neighbor(neighbor, json.dumps(outdict))
+        return
 
     def getPath(self, parent_dict, node_id, path):
         if parent_dict[node_id] == -1:
